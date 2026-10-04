@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/*
+ * PartScout design system.
+ *
+ * Dark mode is the primary experience (technicians in workshops, often on
+ * phones). The light theme is designed separately rather than inverted: it uses
+ * a cool off-white surface stack, deeper indigo accents for contrast on paper
+ * and softer borders, so both themes feel intentional.
+ */
+
+@theme inline {
+  --color-bg: var(--ps-bg);
+  --color-surface: var(--ps-surface);
+  --color-surface-2: var(--ps-surface-2);
+  --color-surface-3: var(--ps-surface-3);
+  --color-border: var(--ps-border);
+  --color-border-strong: var(--ps-border-strong);
+  --color-text: var(--ps-text);
+  --color-muted: var(--ps-muted);
+  --color-primary: var(--ps-primary);
+  --color-primary-strong: var(--ps-primary-strong);
+  --color-secondary: var(--ps-secondary);
+  --color-success: var(--ps-success);
+  --color-warning: var(--ps-warning);
+  --color-danger: var(--ps-danger);
+  --color-info: var(--ps-info);
+
+  --font-sans: var(--ps-font-sans);
+  --font-mono: var(--ps-font-mono);
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.24), 0 8px 30px -12px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 12px 40px -16px rgb(0 0 0 / 0.6);
+}
+
+:root {
+  /* ---- Light theme: designed for daylight workshops ---------------------- */
+  --ps-bg: #f6f7fb;
+  --ps-surface: #ffffff;
+  --ps-surface-2: #f1f3f9;
+  --ps-surface-3: #e7eaf3;
+  --ps-border: #d9deea;
+  --ps-border-strong: #c2c9db;
+  --ps-text: #0f172a;
+  --ps-muted: #5b657a;
+  --ps-primary: #4f46e5;
+  --ps-primary-strong: #4338ca;
+  --ps-secondary: #7c3aed;
+  --ps-success: #15803d;
+  --ps-warning: #b45309;
+  --ps-danger: #b91c1c;
+  --ps-info: #0369a1;
+  --ps-glass: rgb(255 255 255 / 0.72);
+  --ps-grid: rgb(79 70 229 / 0.07);
+
+  --ps-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ps-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  color-scheme: light;
+}
+
+.dark {
+  /* ---- Dark theme (primary) --------------------------------------------- */
+  --ps-bg: #05070d;
+  --ps-surface: #0a0f1c;
+  --ps-surface-2: #0d1322;
+  --ps-surface-3: #121a2d;
+  --ps-border: #1e293b;
+  --ps-border-strong: #2a3a55;
+  --ps-text: #f8fafc;
+  --ps-muted: #94a3b8;
+  --ps-primary: #6366f1;
+  --ps-primary-strong: #4f46e5;
+  --ps-secondary: #8b5cf6;
+  --ps-success: #22c55e;
+  --ps-warning: #f59e0b;
+  --ps-danger: #ef4444;
+  --ps-info: #38bdf8;
+  --ps-glass: rgb(10 15 28 / 0.72);
+  --ps-grid: rgb(99 102 241 / 0.09);
+
+  color-scheme: dark;
+}
+
+* {
+  border-color: var(--ps-border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--ps-bg);
+  color: var(--ps-text);
+  font-family: var(--ps-font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--ps-primary) 35%, transparent);
+}
+
+/* Subtle technical grid used behind hero sections */
+.ps-grid-bg {
+  background-image:
+    linear-gradient(to right, var(--ps-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ps-grid) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.ps-glow {
+  background:
+    radial-gradient(60% 55% at 18% 8%, color-mix(in oklab, var(--ps-primary) 28%, transparent), transparent 70%),
+    radial-gradient(50% 45% at 82% 4%, color-mix(in oklab, var(--ps-secondary) 24%, transparent), transparent 72%);
+}
+
+.ps-glass {
+  background: var(--ps-glass);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+.ps-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.ps-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--ps-muted) 35%, transparent);
+  border-radius: 999px;
+}
+
+.ps-focus-ring:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--ps-primary) 80%, white 10%);
+  outline-offset: 2px;
+}
+
+@keyframes ps-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.ps-pulse {
+  animation: ps-pulse-soft 1.6s ease-in-out infinite;
+}
+
+@keyframes ps-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.ps-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--ps-primary) 22%, transparent),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: ps-shimmer 2.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ps-pulse, .ps-shimmer { animation: none; }
+}
