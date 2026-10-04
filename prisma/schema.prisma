@@ -1,0 +1,314 @@
+// PartScout database schema.
+//
+// IMPORTANT: this database stores APPLICATION and RESEARCH data (users, searches,
+// research sessions + their sources/claims, cache, feedback, usage, admin error
+// logs). It is explicitly NOT an authoritative compatibility database: the live
+// web evidence is the knowledge source, and every report keeps its own sources so
+// users can audit it later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+  TECHNICIAN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  image         String?
+  role          Role      @default(USER)
+  plan          Plan      @default(FREE)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  searches          Search[]
+  researchSessions  ResearchSession[]
+  savedSearches     SavedSearch[]
+  feedback          Feedback[]
+  identifications   PartIdentification[]
+  usageRecords      UsageRecord[]
+
+  @@index([createdAt])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  sessionToken String   @unique
+  expires      DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A user-visible search event (including anonymous searches).
+model Search {
+  id           String   @id @default(cuid())
+  userId       String?
+  researchId   String?
+  query        String
+  normalizedQuery String
+  intent       String
+  device       String?
+  partCategory String?
+  partNumber   String?
+  ipHash       String?
+  createdAt    DateTime @default(now())
+
+  user     User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  research ResearchSession? @relation(fields: [researchId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([intent])
+}
+
+/// One completed research run. `report` holds the full report JSON so a user can
+/// revisit exactly what was found (sources, claims, confidence at that time).
+model ResearchSession {
+  id              String   @id @default(cuid())
+  userId          String?
+  cacheKey        String   @unique
+  question        String
+  normalizedQuery String
+  intent          String
+  device          String?
+  deviceBrand     String?
+  partCategory    String?
+  partNumber      String?
+  verdict         String
+  confidenceScore Int
+  confidenceLevel String
+  fixtureData     Boolean  @default(false)
+  answerMethod    String?
+  searchProvider  String?
+  aiProvider      String?
+  durationMs      Int      @default(0)
+  estimatedCostUsd Float   @default(0)
+  report          Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  expiresAt       DateTime?
+
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sources    ResearchSource[]
+  claims     ResearchClaim[]
+  searches   Search[]
+  feedback   Feedback[]
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([verdict])
+  @@index([updatedAt])
+}
+
+model ResearchSource {
+  id             String   @id @default(cuid())
+  researchId     String
+  url            String
+  domain         String
+  title          String
+  siteName       String?
+  sourceType     String?
+  tier           Int      @default(3)
+  quality        Float    @default(0)
+  fetched        Boolean  @default(false)
+  evidenceSnippet String?
+  createdAt      DateTime @default(now())
+
+  research ResearchSession @relation(fields: [researchId], references: [id], onDelete: Cascade)
+
+  @@unique([researchId, url])
+  @@index([domain])
+}
+
+model ResearchClaim {
+  id               String   @id @default(cuid())
+  researchId       String
+  sourceUrl        String?
+  sourceDomain     String?
+  device           String?
+  modelNumbers     String[] @default([])
+  partNumber       String?
+  partCategory     String?
+  claim            String
+  evidenceText     String
+  strength         Float    @default(0)
+  extractionMethod String?
+  createdAt        DateTime @default(now())
+
+  research ResearchSession @relation(fields: [researchId], references: [id], onDelete: Cascade)
+
+  @@index([researchId])
+}
+
+model SavedSearch {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String
+  query      String
+  mode       String
+  researchId String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, query, mode])
+  @@index([userId, createdAt])
+}
+
+model Feedback {
+  id         String   @id @default(cuid())
+  researchId String?
+  userId     String?
+  helpful    Boolean
+  reason     String?
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  user     User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  research ResearchSession? @relation(fields: [researchId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([helpful])
+}
+
+/// Per-call usage accounting (search API calls, page fetches, AI tokens).
+model UsageRecord {
+  id               String   @id @default(cuid())
+  userId           String?
+  researchId       String?
+  area             String
+  provider         String
+  model            String?
+  label            String?
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  costUsd          Float    @default(0)
+  durationMs       Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([area])
+  @@index([provider])
+}
+
+model PartIdentification {
+  id             String   @id @default(cuid())
+  userId         String?
+  identifierType String
+  identifier     String
+  device         String?
+  manufacturer   String?
+  partCategory   String
+  imageHash      String?
+  imageMimeType  String?
+  confidence     Float    @default(0)
+  method         String
+  result         Json
+  researchId     String?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([imageHash])
+}
+
+/// Cached provider search responses (keyed by provider + query + options).
+model SearchCache {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  provider  String
+  query     String
+  payload   Json
+  hits      Int      @default(0)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+/// Cached fetched page content (keyed by canonical URL).
+model SourceCache {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  url        String
+  title      String?
+  domain     String?
+  text       String
+  wordCount  Int      @default(0)
+  fetched    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+}
+
+/// Cached research reports (keyed by normalised query + pipeline version).
+model ResearchCache {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  normalisedQuery String
+  intent          String
+  report          Json
+  verdict         String
+  confidenceScore Int
+  hits            Int      @default(0)
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
+
+  @@index([expiresAt])
+  @@index([normalisedQuery])
+}
+
+/// Provider/API failures surfaced in the admin dashboard.
+model ApiErrorLog {
+  id        String   @id @default(cuid())
+  area      String
+  provider  String?
+  message   String
+  detail    String?
+  retryable Boolean  @default(false)
+  context   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([area])
+}
